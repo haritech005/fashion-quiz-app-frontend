@@ -1,0 +1,3 @@
+// constants/supabaseConfig.ts
+export const SUPABASE_URL = "https://nuknsyuikebxaxvdejzx.supabase.co";
+export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51a25zeXVpa2VieGF4dmRlanp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzc1MTUsImV4cCI6MjA4MDc1MzUxNX0.NKbCPhq8cgm6Q4DC__VtQLYfhTTHIRu8UGlig7J3WSU";

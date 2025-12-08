@@ -1,65 +1,34 @@
+import React, { useEffect } from "react";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { COLORS } from "../constants/theme";
 
-export default function HomeScreen() {
+const IndexScreen = () => {
   const router = useRouter();
+
+  useEffect(() => {
+    // Simulate splash screen delay
+    const timer = setTimeout(() => {
+      router.replace("/home"); // Redirect to Home
+    }, 1000); // 1 second splash
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require("../assets/images/logo.png")}
-        style={styles.logo}
-      />
-
-      <Text style={styles.title}>Discover Your Style</Text>
-      <Text style={styles.subtitle}>
-        Take a quick quiz and get personalized outfit recommendations.
-      </Text>
-
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.push("/quiz")}
-      >
-        <Text style={styles.buttonText}>Start Style Quiz</Text>
-      </TouchableOpacity>
+      <ActivityIndicator size="large" color={COLORS.primary} />
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.background,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
-    backgroundColor: "#fff",
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 20,
-    resizeMode: "contain",
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 30,
-    color: "#555",
-  },
-  button: {
-    backgroundColor: "#111",
-    paddingVertical: 14,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
   },
 });
+
+export default IndexScreen;

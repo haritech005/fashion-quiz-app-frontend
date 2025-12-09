@@ -1,4 +1,4 @@
-// app/auth/login.tsx
+// app/auth/signup.tsx
 import React, { useState, useRef } from "react";
 import {
   View,
@@ -16,23 +16,46 @@ import { useRouter } from "expo-router";
 import { supabase } from "../../services/supabase";
 import { COLORS, SPACING, RADIUS, FONT_SIZE } from "../../constants/theme";
 
-export default function LoginScreen() {
+export default function SignupScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const passwordInputRef = useRef<TextInput>(null);
+  const confirmInputRef = useRef<TextInput>(null);
   const shakeAnimation = useRef(new Animated.Value(0)).current;
 
-  // Improved email validation
+  // Email validation
   const isValidEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  // Shake animation for errors
+  // Password strength checker
+  const getPasswordStrength = (pwd: string) => {
+    if (pwd.length === 0) return { strength: 0, label: "", color: "" };
+    if (pwd.length < 6)
+      return { strength: 1, label: "Too short", color: "#DC2626" };
+
+    let strength = 1;
+    if (pwd.length >= 8) strength++;
+    if (/[A-Z]/.test(pwd)) strength++;
+    if (/[0-9]/.test(pwd)) strength++;
+    if (/[^A-Za-z0-9]/.test(pwd)) strength++;
+
+    if (strength <= 2) return { strength: 2, label: "Weak", color: "#F59E0B" };
+    if (strength === 3) return { strength: 3, label: "Good", color: "#10B981" };
+    return { strength: 4, label: "Strong", color: "#059669" };
+  };
+
+  const passwordStrength = getPasswordStrength(password);
+
+  // Shake animation
   const triggerShake = () => {
     Animated.sequence([
       Animated.timing(shakeAnimation, {
@@ -58,12 +81,13 @@ export default function LoginScreen() {
     ]).start();
   };
 
-  const signIn = async () => {
+  const signUp = async () => {
     setErrorMsg("");
+    setSuccessMsg("");
 
-    // Client-side validation
-    if (!email || !password) {
-      setErrorMsg("Please enter email and password.");
+    // Validation
+    if (!email || !password || !confirm) {
+      setErrorMsg("Please fill in all fields.");
       triggerShake();
       return;
     }
@@ -74,71 +98,40 @@ export default function LoginScreen() {
       return;
     }
 
+    if (password.length < 6) {
+      setErrorMsg("Password must be at least 6 characters.");
+      triggerShake();
+      return;
+    }
+
+    if (password !== confirm) {
+      setErrorMsg("Passwords do not match.");
+      triggerShake();
+      return;
+    }
+
     setBusy(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
       });
 
       if (error) throw error;
 
-      // Handle unverified email
-      if (data.user && !data.user.email_confirmed_at) {
-        await supabase.auth.signOut();
-        setErrorMsg("Please verify your email address before signing in.");
-        triggerShake();
-        setBusy(false);
-        return;
-      }
+      setSuccessMsg("Account created! Check your email to verify.");
 
-      // Success - navigation handled by useAuth
+      // Auto-redirect after 2 seconds
+      setTimeout(() => {
+        router.replace("/auth/login");
+      }, 2000);
     } catch (e: any) {
-      if (e?.message.includes("Invalid login credentials")) {
-        setErrorMsg("Invalid email or password.");
-      } else if (e?.message.includes("Email not confirmed")) {
-        setErrorMsg("Please verify your email first.");
+      if (e?.message.includes("already registered")) {
+        setErrorMsg("This email is already registered. Please sign in.");
       } else {
-        setErrorMsg(e?.message ?? "Sign in failed. Please try again.");
+        setErrorMsg(e?.message ?? "Sign up failed. Please try again.");
       }
       triggerShake();
-      setBusy(false);
-    }
-  };
-
-  const handleForgotPassword = async () => {
-    if (!email) {
-      setErrorMsg("Enter your email to reset password.");
-      triggerShake();
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      setErrorMsg("Please enter a valid email address.");
-      triggerShake();
-      return;
-    }
-
-    setBusy(true);
-    setErrorMsg("");
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        email.trim().toLowerCase(),
-        {
-          redirectTo: "your-app://reset-password", // Configure this for your app
-        }
-      );
-
-      if (error) throw error;
-
-      setErrorMsg(""); // Clear any errors
-      // Show success message (you might want a success state)
-      alert("Password reset email sent! Check your inbox.");
-    } catch (e: any) {
-      setErrorMsg(e?.message ?? "Failed to send reset email.");
-      triggerShake();
-    } finally {
       setBusy(false);
     }
   };
@@ -147,7 +140,6 @@ export default function LoginScreen() {
     <KeyboardAvoidingView
       style={styles.outer}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -155,20 +147,20 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.container}>
-          {/* Header Section */}
+          {/* Header */}
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <View style={styles.logoCircle}>
                 <Text style={styles.logoText}>AI</Text>
               </View>
             </View>
-            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>
-              Sign in to your account
+              Create account and start your quiz
             </Text>
           </View>
 
-          {/* Form Section */}
+          {/* Form */}
           <Animated.View
             style={[
               styles.formContainer,
@@ -193,7 +185,6 @@ export default function LoginScreen() {
                 editable={!busy}
                 returnKeyType="next"
                 onSubmitEditing={() => passwordInputRef.current?.focus()}
-                accessibilityLabel="Email input"
               />
             </View>
 
@@ -203,7 +194,7 @@ export default function LoginScreen() {
               <View style={styles.passwordContainer}>
                 <TextInput
                   ref={passwordInputRef}
-                  placeholder="Enter your password"
+                  placeholder="Create a strong password"
                   value={password}
                   onChangeText={(text) => {
                     setPassword(text);
@@ -217,23 +208,97 @@ export default function LoginScreen() {
                   ]}
                   placeholderTextColor={COLORS.muted}
                   editable={!busy}
-                  returnKeyType="done"
-                  onSubmitEditing={signIn}
-                  accessibilityLabel="Password input"
+                  returnKeyType="next"
+                  onSubmitEditing={() => confirmInputRef.current?.focus()}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeButton}
                   disabled={busy}
-                  accessibilityLabel={
-                    showPassword ? "Hide password" : "Show password"
-                  }
                 >
                   <Text style={styles.eyeText}>
                     {showPassword ? "👁️" : "👁️‍🗨️"}
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Password Strength Indicator */}
+              {password.length > 0 && (
+                <View style={styles.strengthContainer}>
+                  <View style={styles.strengthBars}>
+                    {[1, 2, 3, 4].map((level) => (
+                      <View
+                        key={level}
+                        style={[
+                          styles.strengthBar,
+                          level <= passwordStrength.strength && {
+                            backgroundColor: passwordStrength.color,
+                          },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                  <Text
+                    style={[
+                      styles.strengthLabel,
+                      { color: passwordStrength.color },
+                    ]}
+                  >
+                    {passwordStrength.label}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Confirm Password Input */}
+            <View style={styles.inputWrapper}>
+              <Text style={styles.label}>Confirm Password</Text>
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  ref={confirmInputRef}
+                  placeholder="Re-enter your password"
+                  value={confirm}
+                  onChangeText={(text) => {
+                    setConfirm(text);
+                    setErrorMsg("");
+                  }}
+                  secureTextEntry={!showConfirm}
+                  style={[
+                    styles.input,
+                    styles.passwordInput,
+                    errorMsg && styles.inputError,
+                  ]}
+                  placeholderTextColor={COLORS.muted}
+                  editable={!busy}
+                  returnKeyType="done"
+                  onSubmitEditing={signUp}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirm(!showConfirm)}
+                  style={styles.eyeButton}
+                  disabled={busy}
+                >
+                  <Text style={styles.eyeText}>
+                    {showConfirm ? "👁️" : "👁️‍🗨️"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Match Indicator */}
+              {confirm.length > 0 && password.length > 0 && (
+                <Text
+                  style={[
+                    styles.matchText,
+                    {
+                      color: password === confirm ? COLORS.success : "#DC2626",
+                    },
+                  ]}
+                >
+                  {password === confirm
+                    ? "✓ Passwords match"
+                    : "✗ Passwords don't match"}
+                </Text>
+              )}
             </View>
 
             {/* Error Message */}
@@ -244,27 +309,25 @@ export default function LoginScreen() {
               </View>
             )}
 
-            {/* Forgot Password */}
-            <TouchableOpacity
-              onPress={handleForgotPassword}
-              style={styles.forgotButton}
-              disabled={busy}
-            >
-              <Text style={styles.forgotText}>Forgot password?</Text>
-            </TouchableOpacity>
+            {/* Success Message */}
+            {!!successMsg && (
+              <View style={styles.successContainer}>
+                <Text style={styles.successIcon}>✓</Text>
+                <Text style={styles.successText}>{successMsg}</Text>
+              </View>
+            )}
 
-            {/* Sign In Button */}
+            {/* Sign Up Button */}
             <TouchableOpacity
               style={[styles.primaryButton, busy && styles.disabled]}
-              onPress={signIn}
+              onPress={signUp}
               disabled={busy}
               activeOpacity={0.8}
-              accessibilityLabel="Sign in button"
             >
               {busy ? (
                 <ActivityIndicator color={COLORS.background} size="small" />
               ) : (
-                <Text style={styles.primaryText}>Sign In</Text>
+                <Text style={styles.primaryText}>Create Account</Text>
               )}
             </TouchableOpacity>
 
@@ -275,20 +338,23 @@ export default function LoginScreen() {
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Sign Up Link */}
+            {/* Sign In Link */}
             <TouchableOpacity
               style={styles.secondaryButton}
-              onPress={() => router.push("/auth/signup")}
+              onPress={() => router.push("/auth/login")}
               disabled={busy}
               activeOpacity={0.8}
             >
-              <Text style={styles.secondaryText}>Create New Account</Text>
+              <Text style={styles.secondaryText}>
+                Already have an account? Sign In
+              </Text>
             </TouchableOpacity>
           </Animated.View>
 
           {/* Footer */}
           <Text style={styles.footer}>
-            By continuing, you agree to our Terms of Service and Privacy Policy
+            By creating an account, you agree to our Terms of Service and
+            Privacy Policy
           </Text>
         </View>
       </ScrollView>
@@ -389,6 +455,29 @@ const styles = StyleSheet.create({
   eyeText: {
     fontSize: 20,
   },
+  strengthContainer: {
+    marginTop: SPACING.xs,
+  },
+  strengthBars: {
+    flexDirection: "row",
+    gap: 4,
+    marginBottom: 4,
+  },
+  strengthBar: {
+    flex: 1,
+    height: 4,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 2,
+  },
+  strengthLabel: {
+    fontSize: FONT_SIZE.small,
+    fontWeight: "600",
+  },
+  matchText: {
+    fontSize: FONT_SIZE.small,
+    fontWeight: "600",
+    marginTop: SPACING.xs,
+  },
   errorContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -409,14 +498,26 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.small,
     fontWeight: "500",
   },
-  forgotButton: {
-    alignSelf: "flex-end",
-    marginBottom: SPACING.lg,
+  successContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#D1FAE5",
+    padding: SPACING.sm,
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.md,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.success,
   },
-  forgotText: {
-    color: COLORS.primary,
-    fontSize: FONT_SIZE.regular,
-    fontWeight: "600",
+  successIcon: {
+    fontSize: 16,
+    marginRight: SPACING.xs,
+    color: COLORS.success,
+  },
+  successText: {
+    flex: 1,
+    color: COLORS.success,
+    fontSize: FONT_SIZE.small,
+    fontWeight: "500",
   },
   primaryButton: {
     backgroundColor: COLORS.primary,
@@ -466,7 +567,6 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: "700",
     fontSize: FONT_SIZE.medium,
-    letterSpacing: 0.5,
   },
   footer: {
     textAlign: "center",

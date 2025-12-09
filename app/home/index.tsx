@@ -1,14 +1,74 @@
 import { useRouter } from "expo-router";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View, Alert } from "react-native";
 import { COLORS } from "../../constants/theme";
+import { supabase } from "../../services/supabase";
+import { useAuthStore } from "../../store/authStore";
+import { useState } from "react";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            setLoggingOut(true);
+            try {
+              const { error } = await supabase.auth.signOut();
+              if (error) throw error;
+              // Navigation will be handled by useAuth hook in _layout
+            } catch (error: any) {
+              console.error("Logout error:", error);
+              Alert.alert("Error", "Failed to sign out. Please try again.");
+              setLoggingOut(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   return (
     <View style={styles.centeredContainer}>
       <View style={styles.bgCircle1} />
       <View style={styles.bgCircle2} />
+
+      {/* Header with Logout */}
+      <View style={styles.header}>
+        <View style={styles.userInfo}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>
+              {user?.email?.charAt(0).toUpperCase() || "U"}
+            </Text>
+          </View>
+          <View>
+            <Text style={styles.welcomeText}>Welcome back!</Text>
+            <Text style={styles.emailText} numberOfLines={1}>
+              {user?.email || "User"}
+            </Text>
+          </View>
+        </View>
+        
+        <TouchableOpacity 
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          disabled={loggingOut}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.logoutIcon}>🚪</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.heroSection}>
         <View style={styles.logoContainer}>
@@ -64,13 +124,66 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
 
+  // Header Styles
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 20,
+    zIndex: 10,
+  },
+  userInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.background,
+  },
+  welcomeText: {
+    fontSize: 12,
+    color: COLORS.secondary,
+    fontWeight: "500",
+  },
+  emailText: {
+    fontSize: 14,
+    color: COLORS.textDark,
+    fontWeight: "600",
+    maxWidth: 180,
+  },
+  logoutButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.primary + "20",
+  },
+  logoutIcon: {
+    fontSize: 20,
+  },
+
   heroSection: {
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: 24,
     alignItems: "center",
-
-    transform: [{ translateY: -20 }],
+    transform: [{ translateY: -40 }],
   },
 
   socialProofWrapper: {
